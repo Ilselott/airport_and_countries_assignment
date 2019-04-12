@@ -1,0 +1,22 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: example-ingress
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+        - path: /countries
+          backend:
+            serviceName: countries-service
+            servicePort: 8080
+        - path: /airports
+          backend:
+            serviceName: airports-service
+            servicePort: 8080
+        - path: /search
+          backend:
+            serviceName: airports-service
+            servicePort: 8080

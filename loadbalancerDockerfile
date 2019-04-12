@@ -1,0 +1,6 @@
+FROM nginx
+
+COPY ./nginx/configs/error.log /etc/nginx/logs/error.log
+COPY ./nginx/configs/nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx/configs/nginx.pid /etc/nginx/logs/nginx.pid
+EXPOSE 80:8000

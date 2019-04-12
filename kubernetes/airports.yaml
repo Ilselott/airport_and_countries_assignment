@@ -1,0 +1,21 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: airports
+  labels:
+    app: airports
+spec:
+  containers:
+    - name: airports
+      image: airports:1.0.1
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: airports-service
+spec:
+  selector:
+    app: airports
+  ports:
+    - port: 8080 # Default port for image

@@ -1,0 +1,35 @@
+version: "3"
+services:
+
+  countries:
+    image: countries:1.0.1
+    networks:
+           - countries
+    deploy:
+           replicas: 4
+           update_config:
+               parallelism: 4
+
+  airports:
+     image: airports:1.0.1
+     networks:
+           - airport
+     deploy:
+           replicas: 4
+           update_config:
+               parallelism: 4
+           
+  loadbalancer:
+      image: loadbalancer:1.0.0
+      ports:
+           - "8000:8000"
+      networks:
+           - countries
+           - airport
+      depends_on :
+           - countries
+           - airports
+
+networks:
+    countries:
+    airport:

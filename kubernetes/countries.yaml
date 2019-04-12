@@ -1,0 +1,22 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: countries
+  labels:
+    app: countries
+spec:
+  containers:
+    - name: countries
+      image: countries:1.0.1
+
+---
+
+kind: Service
+apiVersion: v1
+metadata:
+  name: countries-service
+spec:
+  selector:
+    app: countries
+  ports:
+    - port: 8080 # Default port for image
