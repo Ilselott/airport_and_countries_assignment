@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 mkdir sums nginx docker-swarm nginx/configs
 touch nginx/configs/error.log
