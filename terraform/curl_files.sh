@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-mkdir sums nginx docker-swarm nginx/configs fly
+mkdir /home/ec2-user/sums /home/ec2-user/nginx /home/ec2-user/docker-swarm /home/ec2-user/nginx/configs fly
 touch nginx/configs/error.log
 echo "1" > /home/ec2-user/nginx/configs/nginx.pid
 curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/docker-swarm/docker-compose.yml > /home/ec2-user/docker-swarm/docker-compose.yml 
