@@ -1,0 +1,15 @@
+---
+regions:
+- global
+- eu-west-1
+
+account-blacklist:
+- 1234567890
+
+resource-type:
+  filter:
+    S3Bucket:
+      - "buckettoclean"
+
+accounts:
+  801771690413:
