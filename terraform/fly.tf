@@ -31,7 +31,7 @@ resource "aws_autoscaling_group" "example" {
   max_size = 10
 
   load_balancers    = ["${aws_elb.example.name}"]
-  health_check_type = "ELB"
+ # health_check_type = "ELB"
 
   tag {
     key                 = "Name"
@@ -54,7 +54,7 @@ public_key = "${file("~/.ssh/id_rsa.pub")}"
 # ------------------------------------------------------------------
 
 resource "aws_launch_configuration" "example" {
-  image_id        = "ami-08d658f84a6d84a80"
+  image_id        = "ami-01f3682deed220c2a"
   instance_type   = "t2.micro"
   security_groups = ["${aws_security_group.instance.id}"]
   key_name = "${aws_key_pair.key.key_name}"
@@ -62,16 +62,9 @@ resource "aws_launch_configuration" "example" {
 
   user_data = <<-EOF
               #!/bin/bash
-              sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/terraform/curl_files.sh > /home/ubuntu/curl_files.sh 
-              sudo chmod 755  /home/ubuntu/curl_files.sh 
-              sudo ./home/ubuntu/curl_files.sh
-              sudo chmod 755  /home/ubuntu/build.sh 
-              curl -fsSL https://get.docker.com | sudo sh
-              service docker start
-              sudo apt install docker-compose
-              sudo ./home/ubuntu/build.sh
-              cd dockwe-swarm 
-              sudo docker-compose up
+              sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/terraform/install.sh > /home/ec2-user/install.sh
+              sudo chmod 755 /home/ec2-user/install.sh
+              sudo ./home/ec2-user/install.sh
               EOF
 
   lifecycle {
@@ -100,6 +93,14 @@ resource "aws_security_group" "instance" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+ 
+  ingress {
+    from_port   = "80"
+    to_port     = "80"
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Allow all outbound
   egress {
     from_port   = 0
@@ -121,13 +122,13 @@ resource "aws_elb" "example" {
   security_groups    = ["${aws_security_group.elb.id}"]
   availability_zones = ["${data.aws_availability_zones.all.names}"]
 
-  health_check {
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    timeout             = 3
-    interval            = 30
-    target              = "HTTP:${var.server_port}/airports/NL"
-  }
+  # health_check {
+  #   healthy_threshold   = 2
+  #   unhealthy_threshold = 2
+  #   timeout             = 3
+  #   interval            = 30
+  #   target              = "HTTP:${var.server_port}/airports/NL"
+  # }
 
   # This adds a listener for incoming HTTP requests.
   listener {
@@ -158,6 +159,13 @@ resource "aws_security_group" "elb" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+   ingress {
+    from_port   = "80"
+    to_port     = "80"
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  } 
   
   ingress {
     from_port   = "22"

@@ -11,4 +11,4 @@ sudo chmod 755 /home/ec2-user/curl_files.sh
 sudo ./home/ec2-user/curl_files.sh
 sudo cd /home/ec2-user/fly/docker-swarm
 sudo docker swarm init
-sudo docker stack deploy fly --compose-file docker-compose.yml
+# sudo docker stack deploy fly --compose-file docker-compose.yml
