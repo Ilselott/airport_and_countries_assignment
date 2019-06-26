@@ -2,3 +2,6 @@
 #*#
 terraform.tfstate*
 .terraform/
+argocd/
+terraform/init.tpl
+terraform/step1
