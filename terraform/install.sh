@@ -9,8 +9,7 @@ sudo service docker start
 sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/terraform/curl_files.sh > /home/ec2-user/curl_files.sh
 sudo chmod 755 /home/ec2-user/curl_files.sh
 sudo ./home/ec2-user/curl_files.sh
-sudo chmod 755 /home/ec2-user/build.sh
-sudo ./home/ec2-user/build.sh
-sudo cd /home/ec2-user/fly/docker-swarm
+sudo chmod 755 /home/ec2-user/fly/build.sh
+sudo ./home/ec2-user/fly/build.sh
 sudo docker swarm init
-sudo docker stack deploy -c docker-compose.yml fly
+sudo docker stack deploy -c /home/ec2-user/fly/docker-swarm/docker-compose.yml fly
