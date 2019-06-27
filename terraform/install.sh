@@ -13,4 +13,4 @@ sudo chmod 755 /home/ec2-user/build.sh
 sudo ./home/ec2-user/build.sh
 sudo cd /home/ec2-user/fly/docker-swarm
 sudo docker swarm init
-# sudo docker stack deploy fly --compose-file docker-compose.yml
+sudo docker stack deploy -c docker-compose.yml fly

@@ -55,7 +55,7 @@ public_key = "${file("~/.ssh/id_rsa.pub")}"
 
 resource "aws_launch_configuration" "example" {
   image_id        = "ami-01f3682deed220c2a"
-  instance_type   = "t2.micro"
+  instance_type   = "t3.medium"
   security_groups = ["${aws_security_group.instance.id}"]
   key_name = "${aws_key_pair.key.key_name}"
   associate_public_ip_address = true
