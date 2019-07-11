@@ -8,4 +8,4 @@ sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assig
 sudo chmod 755 /home/ec2-user/curl_files.sh
 sudo ./home/ec2-user/curl_files.sh
 sudo docker build --build-arg SERV=countries --build-arg=VERS=1.0.1 -t countries:1.0.1 /home/ec2-user/fly
-sudo docker run countries:1.0.1
+sudo docker run -p 8080:8080 countries:1.0.1
