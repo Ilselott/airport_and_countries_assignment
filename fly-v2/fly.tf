@@ -4,7 +4,7 @@
 
 variable "server_port" {
   description = "The port the server will use for HTTP requests"
-  default     = 8000
+  default     = 8080
 }
 
 # ------------------------------------------------------------------
@@ -15,6 +15,16 @@ provider "aws" {
   region = "eu-west-1"
 }
 
+resource "aws_vpc" "fly" {
+  cidr_block = "10.0.0.0/16"
+  tags = {
+    Name = "fly VPC"
+  }
+}
+
+resource "aws_internet_gateway" "fly_igw" {
+  vpc_id = "${aws_vpc.fly.id}"
+}
 
 # ------------------------------------------------------------------
 # CREATE THE KEY PAIR
@@ -31,8 +41,26 @@ public_key = "${file("~/.ssh/id_rsa.pub")}"
 # ------------------------------------------------------------------
 data "aws_availability_zones" "all" {}
 
+resource "aws_subnet" "sub_a" {
+  availability_zone = "eu-west-1a"
+  cidr_block = "10.0.0.0/20"
+  vpc_id = "${aws_vpc.fly.id}"
+}
+
+resource "aws_subnet" "sub_b" {
+  availability_zone = "eu-west-1b"
+  cidr_block = "10.0.16.0/20"
+  vpc_id = "${aws_vpc.fly.id}"
+}
+
+resource "aws_subnet" "sub_c" {
+  availability_zone = "eu-west-1c"
+  cidr_block = "10.0.32.0/20"
+  vpc_id = "${aws_vpc.fly.id}"
+}
+
 # ------------------------------------------------------------------
-# CREATE THE AUTO SCALING GROUP
+# CREATE THE AIRPORTS AUTO SCALING GROUP
 # ------------------------------------------------------------------
 resource "aws_autoscaling_group" "airports" {
   launch_configuration = "${aws_launch_configuration.airports.id}"
@@ -40,9 +68,6 @@ resource "aws_autoscaling_group" "airports" {
 
   min_size = 2
   max_size = 10
-
-  load_balancers    = ["${aws_elb.example.name}"]
- # health_check_type = "ELB"
 
   tag {
     key                 = "Name"
@@ -52,7 +77,7 @@ resource "aws_autoscaling_group" "airports" {
 }
 
 # ------------------------------------------------------------------
-# CREATE THE AUTO SCALING GROUP
+# CREATE THE COUNTRIES AUTO SCALING GROUP
 # ------------------------------------------------------------------
 resource "aws_autoscaling_group" "countries" {
   launch_configuration = "${aws_launch_configuration.countries.id}"
@@ -60,9 +85,6 @@ resource "aws_autoscaling_group" "countries" {
 
   min_size = 2
   max_size = 10
-
-  load_balancers    = ["${aws_elb.example.name}"]
- # health_check_type = "ELB"
 
   tag {
     key                 = "Name"
@@ -72,7 +94,7 @@ resource "aws_autoscaling_group" "countries" {
 }
 
 # ------------------------------------------------------------------
-# CREATE A LAUNCH CONFIGURATION THAT DEFINES EACH EC2 INSTANCE IN THE ASG
+# CREATE A LAUNCH CONFIGURATION THAT DEFINES EACH EC2 INSTANCE IN THE COUNTRIES ASG
 # ------------------------------------------------------------------
 
 resource "aws_launch_configuration" "countries" {
@@ -84,7 +106,7 @@ resource "aws_launch_configuration" "countries" {
 
   user_data = <<-EOF
               #!/bin/bash
-              sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/terraform/install-countries.sh > /home/ec2-user/install.sh
+              sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/fly-v2/install-countries.sh > /home/ec2-user/install.sh
               sudo chmod 755 /home/ec2-user/install.sh
               sudo ./home/ec2-user/install.sh
               EOF
@@ -95,7 +117,7 @@ resource "aws_launch_configuration" "countries" {
 }
 
 # ------------------------------------------------------------------
-# CREATE A LAUNCH CONFIGURATION THAT DEFINES EACH EC2 INSTANCE IN THE ASG
+# CREATE A LAUNCH CONFIGURATION THAT DEFINES EACH EC2 INSTANCE IN THE AIRPORTS ASG
 # ------------------------------------------------------------------
 
 resource "aws_launch_configuration" "airports" {
@@ -107,7 +129,7 @@ resource "aws_launch_configuration" "airports" {
 
   user_data = <<-EOF
               #!/bin/bash
-              sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/fly-v2/install-airports.sh > /home/ec2-user/install.sh
+              sudo curl https://raw.githubusercontent.com/Ilselott/airport_and_countries_assignment/master/fly-v2/install-airport.sh > /home/ec2-user/install.sh
               sudo chmod 755 /home/ec2-user/install.sh
               sudo ./home/ec2-user/install.sh
               EOF
@@ -118,12 +140,88 @@ resource "aws_launch_configuration" "airports" {
 }
 
 # ------------------------------------------------------------------
+# CREATE THE ALB
+# ------------------------------------------------------------------
+
+resource "aws_alb" "alb" {  
+  name               = "fly-alb"
+  security_groups    = ["${aws_security_group.instance.id}"]
+  subnets            = ["${aws_subnet.sub_a.id}", "${aws_subnet.sub_b.id}", "${aws_subnet.sub_c.id}"]
+}
+
+resource "aws_alb_listener" "alb_listener" {  
+  load_balancer_arn = "${aws_alb.alb.arn}"  
+  port              = "${var.server_port}"  
+  protocol          = "HTTP"
+
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type    = "text/plain"
+      message_body    = "page not found"
+      status_code     = "404"
+    }
+  }
+  
+}
+
+resource "aws_alb_listener_rule" "countries" {
+  action {
+    type             = "forward"    
+    target_group_arn = "${aws_alb_target_group.target_countries.id}"  
+  }   
+  listener_arn       = "${aws_alb_listener.alb_listener.arn}"  
+  condition {    
+    field            = "path-pattern"
+    values           = ["/countries/*"]
+  }
+}
+
+resource "aws_alb_target_group" "target_countries" {  
+  name               = "target-countries"  
+  port               = "${var.server_port}"  
+  protocol           = "HTTP"
+  vpc_id             = "${aws_vpc.fly.id}"
+}
+
+resource "aws_autoscaling_attachment" "attatchment_countries" {
+  alb_target_group_arn   = "${aws_alb_target_group.target_countries.arn}"
+  autoscaling_group_name = "${aws_autoscaling_group.countries.id}"
+}
+
+resource "aws_alb_listener_rule" "airports" {
+  action {    
+    type             = "forward"    
+    target_group_arn = "${aws_alb_target_group.target_airports.id}"  
+  }
+    listener_arn = "${aws_alb_listener.alb_listener.arn}"  
+  condition {
+    field  = "path-pattern"
+    values = ["/airports/*"]  
+  }
+}
+
+resource "aws_alb_target_group" "target_airports" {  
+  name     = "target-airports"  
+  port     = "${var.server_port}"  
+  protocol = "HTTP"  
+  vpc_id   = "${aws_vpc.fly.id}"
+}
+
+resource "aws_autoscaling_attachment" "attachement_airports" {
+  alb_target_group_arn   = "${aws_alb_target_group.target_airports.arn}"
+  autoscaling_group_name = "${aws_autoscaling_group.airports.id}"
+}
+
+# ------------------------------------------------------------------
 # CREATE THE SECURITY GROUP THAT'S APPLIED TO EACH EC2 INSTANCE IN THE ASG
 # ------------------------------------------------------------------
 
-resource "aws_security_group" "countries" {
+resource "aws_security_group" "instance" {
 
   name = "terraform-example-instance"
+  vpc_id =  "${aws_vpc.fly.id}"
   
   ingress {
     from_port   = "${var.server_port}"
@@ -135,13 +233,6 @@ resource "aws_security_group" "countries" {
   ingress {
     from_port   = "22"
     to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
- 
-  ingress {
-    from_port   = "80"
-    to_port     = "80"
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -157,70 +248,4 @@ resource "aws_security_group" "countries" {
   lifecycle {
     create_before_destroy = true
   }
-}
-
-# ------------------------------------------------------------------
-# CREATE AN ELB TO ROUTE TRAFFIC ACROSS THE AUTO SCALING GROUP
-# ------------------------------------------------------------------
-resource "aws_elb" "example" {
-  name               = "terraform-asg-example"
-  security_groups    = ["${aws_security_group.elb.id}"]
-  availability_zones = ["${data.aws_availability_zones.all.names}"]
-
-  # health_check {
-  #   healthy_threshold   = 2
-  #   unhealthy_threshold = 2
-  #   timeout             = 3
-  #   interval            = 30
-  #   target              = "HTTP:${var.server_port}/airports/NL"
-  # }
-
-  # This adds a listener for incoming HTTP requests.
-  listener {
-    lb_port           = 8000
-    lb_protocol       = "http"
-    instance_port     = "${var.server_port}"
-    instance_protocol = "http"
-  }
-}
-
-# ------------------------------------------------------------------
-# CREATE A SECURITY GROUP THAT CONTROLS WHAT TRAFFIC AN GO IN AND OUT OF THE ELB
-# ------------------------------------------------------------------
-resource "aws_security_group" "elb" {
-  name = "terraform-example-elb"
-
-  # Allow all outbound
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  
-  ingress {
-    from_port   = "${var.server_port}"
-    to_port     = "${var.server_port}"
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-   ingress {
-    from_port   = "80"
-    to_port     = "80"
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  } 
-  
-  ingress {
-    from_port   = "22"
-    to_port     = "22"
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-}
-
-output "elb_dns_name" {
-  value = "${aws_elb.example.dns_name}"
 }
