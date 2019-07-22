@@ -26,6 +26,29 @@ resource "aws_internet_gateway" "fly_igw" {
   vpc_id = "${aws_vpc.fly.id}"
 }
 
+resource "aws_route_table" "rtb_public" {
+  vpc_id = "${aws_vpc.fly.id}"
+route {
+      cidr_block = "0.0.0.0/0"
+      gateway_id = "${aws_internet_gateway.fly_igw.id}"
+  }
+}
+
+resource "aws_route_table_association" "rta_subnet_a" {
+  subnet_id      = "${aws_subnet.sub_a.id}"
+  route_table_id = "${aws_route_table.rtb_public.id}"
+}
+
+resource "aws_route_table_association" "rta_subnet_b" {
+  subnet_id      = "${aws_subnet.sub_b.id}"
+  route_table_id = "${aws_route_table.rtb_public.id}"
+}
+
+resource "aws_route_table_association" "rta_subnet_c" {
+  subnet_id      = "${aws_subnet.sub_c.id}"
+  route_table_id = "${aws_route_table.rtb_public.id}"
+}
+
 # ------------------------------------------------------------------
 # CREATE THE KEY PAIR
 # ------------------------------------------------------------------
@@ -43,19 +66,19 @@ data "aws_availability_zones" "all" {}
 
 resource "aws_subnet" "sub_a" {
   availability_zone = "eu-west-1a"
-  cidr_block = "10.0.0.0/20"
+  cidr_block = "10.0.0.0/24"
   vpc_id = "${aws_vpc.fly.id}"
 }
 
 resource "aws_subnet" "sub_b" {
   availability_zone = "eu-west-1b"
-  cidr_block = "10.0.16.0/20"
+  cidr_block = "10.0.16.0/24"
   vpc_id = "${aws_vpc.fly.id}"
 }
 
 resource "aws_subnet" "sub_c" {
   availability_zone = "eu-west-1c"
-  cidr_block = "10.0.32.0/20"
+  cidr_block = "10.0.32.0/24"
   vpc_id = "${aws_vpc.fly.id}"
 }
 
@@ -64,7 +87,7 @@ resource "aws_subnet" "sub_c" {
 # ------------------------------------------------------------------
 resource "aws_autoscaling_group" "airports" {
   launch_configuration = "${aws_launch_configuration.airports.id}"
-  availability_zones   = ["${data.aws_availability_zones.all.names}"]
+  vpc_zone_identifier  = ["${aws_subnet.sub_a.id}", "${aws_subnet.sub_b.id}", "${aws_subnet.sub_c.id}", ]
 
   min_size = 2
   max_size = 10
@@ -81,7 +104,7 @@ resource "aws_autoscaling_group" "airports" {
 # ------------------------------------------------------------------
 resource "aws_autoscaling_group" "countries" {
   launch_configuration = "${aws_launch_configuration.countries.id}"
-  availability_zones   = ["${data.aws_availability_zones.all.names}"]
+  vpc_zone_identifier  = ["${aws_subnet.sub_a.id}", "${aws_subnet.sub_b.id}", "${aws_subnet.sub_c.id}", ]
 
   min_size = 2
   max_size = 10
@@ -143,7 +166,7 @@ resource "aws_launch_configuration" "airports" {
 # CREATE THE ALB
 # ------------------------------------------------------------------
 
-resource "aws_alb" "alb" {  
+resource "aws_alb" "alb" {
   name               = "fly-alb"
   security_groups    = ["${aws_security_group.instance.id}"]
   subnets            = ["${aws_subnet.sub_a.id}", "${aws_subnet.sub_b.id}", "${aws_subnet.sub_c.id}"]
@@ -151,7 +174,7 @@ resource "aws_alb" "alb" {
 
 resource "aws_alb_listener" "alb_listener" {  
   load_balancer_arn = "${aws_alb.alb.arn}"  
-  port              = "${var.server_port}"  
+  port              = "80"  
   protocol          = "HTTP"
 
   default_action {
@@ -226,6 +249,13 @@ resource "aws_security_group" "instance" {
   ingress {
     from_port   = "${var.server_port}"
     to_port     = "${var.server_port}"
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
+    from_port   = "80"
+    to_port     = "80"
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
