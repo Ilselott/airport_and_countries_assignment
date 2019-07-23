@@ -87,7 +87,7 @@ resource "aws_subnet" "sub_c" {
 # ------------------------------------------------------------------
 resource "aws_autoscaling_group" "airports" {
   launch_configuration = "${aws_launch_configuration.airports.id}"
-  vpc_zone_identifier  = ["${aws_subnet.sub_a.id}", "${aws_subnet.sub_b.id}", "${aws_subnet.sub_c.id}", ]
+  vpc_zone_identifier  = ["${aws_subnet.sub_a.id}", "${aws_subnet.sub_b.id}", "${aws_subnet.sub_c.id}"]
 
   min_size = 2
   max_size = 10
